@@ -1,29 +1,35 @@
 import Phaser from 'phaser';
 
-export default class HelloWorldScene extends Phaser.Scene {
+export default class MainGame extends Phaser.Scene {
   private deck: string[];
   private hand: string[][];
+  private cardsOnTable: Phaser.GameObjects.Image[];
 
-  constructor() {
+  constructor(
+    private cardPositions: { x: number; y: number }[] = [],
+  ) {
     super('game');
     this.deck = [];
     this.hand = [];
+    this.cardsOnTable = [];
   }
 
   preload() {
     this.load.image('background', '/assets/image/background/bg2.jpg');
-    // Load tất cả các ảnh lá bài vào cache
     const suits = ['h', 'd', 'c', 's'];
     const ranks = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
 
     for (const suit of suits) {
       for (const rank of ranks) {
         const cardKey = `${suit}${rank}`;
+        console.log(cardKey)
         this.load.image(cardKey, `/assets/image/card/${cardKey}.png`);
       }
     }
+    this.load.image('hidden', `/assets/image/card/hidden.png`);
   }
 
+  // tao bai
   createDeck() {
     const suits = ['h', 'd', 'c', 's'];
     const ranks = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
@@ -41,12 +47,12 @@ export default class HelloWorldScene extends Phaser.Scene {
     }
   }
 
+  // chia bai
   dealCards() {
     const numPlayers = 4;
     const numCardsPerPlayer = this.deck.length / numPlayers;
     for (let i = 0; i < numPlayers; i++) {
       const playerHand = this.deck.splice(0, numCardsPerPlayer);
-      console.log(playerHand);
       this.hand.push(playerHand);
     }
   }
@@ -61,8 +67,6 @@ export default class HelloWorldScene extends Phaser.Scene {
     const centerY = this.cameras.main.centerY;
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
-    console.log(centerY)
-    console.log(centerX)
     const positions = [
       { x: padding, y: centerY / 2.5 },
       { x: width / 3.8, y: padding },
@@ -88,18 +92,55 @@ export default class HelloWorldScene extends Phaser.Scene {
           ease: 'Power2',
           delay: cardIndex * 100,
         });
+
+        this.cardsOnTable.push(card);
+
+
+        card.setInteractive();
+        card.on('pointerdown', () => {
+          card.setY(card.y - 20);
+          this.cardPositions.push({ x: card.x, y: card.y });
+        });
       });
     });
+  }
+
+  clearCardsOnTable() {
+    this.cardsOnTable.forEach((card) => {
+      card.destroy();
+    });
+    this.cardsOnTable = [];
   }
 
   create() {
     // Thêm ảnh nền vào khung hình
     const tableBackground = this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'background');
     tableBackground.setDisplaySize(this.cameras.main.width, this.cameras.main.height);
+
     this.createDeck();
 
-    // Thêm nút button "Phát bài"
-    const button = this.add.text(this.cameras.main.width - 112, 15, 'Phát bài', {
+    const btnClearCard = this.button(this.cameras.main.width - 112, 15, 'Chơi lại');
+    const btnStart = this.button(this.cameras.main.width - 112, 15, 'Phát bài');
+    btnClearCard.visible = false;
+
+    btnClearCard.on('pointerdown', () => {
+      this.clearCardsOnTable()
+
+      btnStart.visible = true;
+      btnClearCard.visible = false;
+    });
+
+    btnStart.on('pointerdown', () => {
+      this.dealCards();
+      this.showPlayerHands();
+
+      btnStart.visible = false;
+      btnClearCard.visible = true;
+    });
+  }
+
+  private button(X: any, Y: any, name: any) {
+    return this.add.text(X, Y, name, {
       backgroundColor: '#fff',
       color: '#000',
       padding: {
@@ -109,10 +150,6 @@ export default class HelloWorldScene extends Phaser.Scene {
         bottom: 5,
       },
     }).setInteractive();
-    // Khi click nút "Phát bài", thực hiện hàm dealCards() và showPlayerHands()
-    button.on('pointerdown', () => {
-      this.dealCards();
-      this.showPlayerHands();
-    });
   }
+
 }
